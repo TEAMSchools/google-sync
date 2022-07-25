@@ -5,36 +5,33 @@ export PROJECT_DIR=$(dirname $FILEPATH)
 
 export GAM_THREADS=$GAM_THREADS
 
-mkdir -p $PROJECT_DIR/data
-mkdir -p $PROJECT_DIR/log
-
-printf "Extracting user files from database...\n"
-cd $DATAGUN_DIR
-pdm run extract --config ./datagun/config/gapps.json
-printf "\n"
+mkdir -p $PROJECT_DIR/data/users
+mkdir -p $PROJECT_DIR/log/users
 
 cd $PROJECT_DIR
 
 printf "Exporting existing users from Google to $GAM_USERS_EXPORT_FILE\n"
-gam print users domain $GOOGLE_STUDENTS_DOMAIN firstname lastname ou suspended > $GAM_USERS_EXPORT_FILE
-printf "\n"
-
-printf "Exporting existing admins from Google to $GAM_ADMINS_EXPORT_FILE\n"
-gam print admins role "Reset Student PW" > $GAM_ADMINS_EXPORT_FILE
+gam print users domain $GOOGLE_STUDENTS_DOMAIN firstname lastname ou suspended \
+    > $GAM_USERS_EXPORT_FILE
 printf "\n"
 
 printf "Transforming final sync file\n"
-pdm run transform
+pdm run prep-admins
 printf "\n"
 
-for dir in $PROJECT_DIR/data/*/;
+# setup
+for dir in $PROJECT_DIR/data/users/*/;
 do
     dir=${dir%*/}
     region=${dir##*/}
 
-    mkdir -p $PROJECT_DIR/data/$region
-    mkdir -p $PROJECT_DIR/log/$region
+    mkdir -p $PROJECT_DIR/data/users/$region
+    mkdir -p $PROJECT_DIR/log/users/$region
+done    
 
+# create new
+for dir in $PROJECT_DIR/data/users/*/;
+do
     printf "$region - Creating users...\n"
     create_file=$dir/user_create.csv
     if [ -f $create_file ]; then
@@ -58,48 +55,11 @@ do
         printf "\tNo users to create!\n"
     fi
     printf "\n"
+done    
 
-    printf "$region - Syncing user group membership...\n"
-    group_file=$dir/group.csv
-    if [ -f $group_file ]; then
-        filename=$(basename -- "$group_file")
-        filename="${filename%.*}"
-
-        gam csv $group_file \
-        gam update \
-            group ~group_email \
-            sync member notsuspended nomail \
-            ou_and_children "/Students/~~region~~"
-    fi
-    printf "\n"
-
-    printf "$region - Creating Reset Student PW admins...\n"
-    admin_file=$dir/admin_create.csv
-    if [ -f $admin_file ]; then
-        filename=$(basename -- "$admin_file")
-        filename="${filename%.*}"
-
-        gam csv $admin_file \
-        gam create \
-            admin ~user \
-            "Reset Student PW" \
-            org_unit "~~OU~~"
-
-        rm $admin_file
-    else
-        printf "\tNo admins to create!\n"
-    fi
-    printf "\n"
-done
-
-for dir in $PROJECT_DIR/data/*/;
+# update existing
+for dir in $PROJECT_DIR/data/users/*/;
 do
-    dir=${dir%*/}
-    region=${dir##*/}
-
-    mkdir -p $PROJECT_DIR/data/$region
-    mkdir -p $PROJECT_DIR/log/$region
-
     printf "$region - Updating users w/ pw...\n"
     update_pw_file=$dir/user_update_pw.csv
     if [ -f $update_pw_file ]; then
@@ -142,6 +102,24 @@ do
         rm $update_nopw_file
     else
         printf "\tNo users to update w/o pw!\n"
+    fi
+    printf "\n"
+done
+
+# sync groups
+for dir in $PROJECT_DIR/data/users/*/;
+do
+    printf "$region - Syncing user group membership...\n"
+    group_file=$dir/group.csv
+    if [ -f $group_file ]; then
+        filename=$(basename -- "$group_file")
+        filename="${filename%.*}"
+
+        gam csv $group_file \
+        gam update \
+            group ~group_email \
+            sync member notsuspended nomail \
+            ou_and_children "/Students/~~region~~"
     fi
     printf "\n"
 done
