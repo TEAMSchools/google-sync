@@ -8,9 +8,11 @@ export GAM_THREADS=$GAM_THREADS
 mkdir -p $PROJECT_DIR/data/users
 mkdir -p $PROJECT_DIR/log/users
 
-printf "Exporting existing users from Google to $GAM_USERS_EXPORT_FILE\n"
-gam print users domain $GOOGLE_STUDENTS_DOMAIN firstname lastname ou suspended \
-    > $GAM_USERS_EXPORT_FILE
+printf "Exporting existing users from Google to ${GAM_USERS_EXPORT_FILE}\n"
+gam print users domain \
+    $GOOGLE_STUDENTS_DOMAIN \
+    firstname lastname ou suspended \
+        > $GAM_USERS_EXPORT_FILE
 printf "\n"
 
 printf "Transforming final sync file\n"
@@ -20,9 +22,7 @@ printf "\n"
 # setup
 for dir in $PROJECT_DIR/data/users/*/;
 do
-    dir=${dir%*/}
     region=${dir##*/}
-
     mkdir -p $PROJECT_DIR/data/users/$region
     mkdir -p $PROJECT_DIR/log/users/$region
 done    
@@ -30,8 +30,8 @@ done
 # create new
 for dir in $PROJECT_DIR/data/users/*/;
 do
-    printf "$region - Creating users...\n"
-    create_file=$dir/user_create.csv
+    printf "${dir} - Creating users...\n"
+    create_file=${dir}user_create.csv
     if [ -f $create_file ]; then
         printf "$create_file\n"
 
@@ -58,15 +58,15 @@ done
 # update existing
 for dir in $PROJECT_DIR/data/users/*/;
 do
-    printf "$region - Updating users w/o pw...\n"
-    update_nopw_file=$dir/user_update_nopw.csv
-    if [ -f $update_nopw_file ]; then
-        printf "$update_nopw_file\n"
+    printf "${dir} - Updating users w/o pw...\n"
+    update_file=${dir}user_update_nopw.csv
+    if [ -f $update_file ]; then
+        printf "$update_file\n"
 
-        filename=$(basename -- "$update_nopw_file")
+        filename=$(basename -- "$update_file")
         filename="${filename%.*}"
 
-        gam csv $update_nopw_file \
+        gam csv $update_file \
         gam update \
             user ~primaryEmail \
             firstname ~firstname \
@@ -74,7 +74,7 @@ do
             suspended ~suspended_x \
             org ~org
 
-        rm $update_nopw_file
+        rm $update_file
     else
         printf "\tNo users to update w/o pw!\n"
     fi
@@ -84,8 +84,8 @@ done
 # sync groups
 for dir in $PROJECT_DIR/data/users/*/;
 do
-    printf "$region - Syncing user group membership...\n"
-    group_file=$dir/group.csv
+    printf "${dir} - Syncing user group membership...\n"
+    group_file=${dir}group.csv
     if [ -f $group_file ]; then
         filename=$(basename -- "$group_file")
         filename="${filename%.*}"
