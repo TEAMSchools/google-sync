@@ -6,8 +6,12 @@ authors = [
   { name = "Charlie Bini", email = "5003326+cbini@users.noreply.github.com" },
 ]
 license-expression = "MIT"
-dependencies = ["pandas>=1.4.1"]
+dependencies = [
+    "pandas>=1.4.1",
+    "datarobot @ file:///${PROJECT_ROOT}/../datarobot",
+]
 requires-python = ">=3.9"
+dynamic = ["dependencies"]
 
 [project.urls]
 Homepage = ""
@@ -29,4 +33,4 @@ prep-users = { call = "google_sync.prep_user_files:main" }
 gam-admins = { cmd = "bash ./google_sync/gam-admins.sh" }
 gam-users = { cmd = "bash ./google_sync/gam-users.sh" }
 gam-update = { cmd = "bash <(curl -s -S -L https://gam-shortn.appspot.com/gam-install) -l" }
-post_lock = { shell = "pdm export -f requirements > requirements.txt" }
+post_lock = { shell = "pdm export -f requirements -o requirements.txt" }
